@@ -1,14 +1,140 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TV</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="script.js"></script>
+    <title>Your Website</title>
+    <style>
+        body {
+            font-family: Quicksand, sans-serif;
+            margin: 20px;
+            margin-left: 60px;
+            margin-right: 60px;
+            font-size: 200%;
+            color: azure;
+        }
+
+        .bus {
+            display: flex;
+            justify-content: space-between;
+            border: 1px solid #ccc;
+            background-color: rgba(1, 1, 1, 0.5);
+            padding: 10px;
+            margin-bottom: 10px;
+            height: 50px;
+            border-radius: 5px;
+        }
+
+        .imminent {
+            animation: pulse 1.5s infinite; /* Add this line for the pulsing animation */
+            color: red;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
 </head>
 <body>
-    <div>
-        <h1>Es geht :)</h1>
-        der rasberry pi hat erfolgreich eine verbindung hergestellt
- 
+    <div class="content">
+        <h1>Next Buses at Beringen, Sonne</h1>
+        <div id="busContainer"></div>
+
+        <script>
+            function getBuses() {
+                const apiUrl = "http://transport.opendata.ch/v1/stationboard";
+                const stationName = "Beringen, Sonne";
+
+                const params = {
+                    station: stationName,
+                    limit: 5
+                };
+
+                const queryString = new URLSearchParams(params).toString();
+                const url = `${apiUrl}?${queryString}`;
+
+                const xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === XMLHttpRequest.DONE) {
+                        if (xhr.status === 200) {
+                            const data = JSON.parse(xhr.responseText);
+                            const busContainer = document.getElementById("busContainer");
+                            busContainer.innerHTML = ""; // Clear previous entries
+
+                            const stationboard = data.stationboard || [];
+                            if (stationboard.length > 0) {
+                                const currentUtcTime = new Date();
+
+                                stationboard.forEach(connection => {
+                                    const departureTime = connection.stop.departure;
+                                    const departureUtcTime = new Date(departureTime);
+
+                                    // Only display buses that haven't left yet
+                                    if (departureUtcTime > currentUtcTime) {
+                                        const timeUntilDeparture = calculateTimeUntilDeparture(departureTime);
+                                        const isImminent = timeUntilDeparture <= 5;
+
+                                        const busDiv = document.createElement("div");
+                                        busDiv.className = "bus";
+                                        
+                                        if (isImminent) {
+                                            busDiv.classList.add("imminent");
+                                        }
+                                        
+                                        busDiv.innerHTML = `
+                                            <span>${connection.to}</span>
+                                            <span>${timeUntilDeparture}'</span>
+                                        `;
+                                        busContainer.appendChild(busDiv);
+                                    }
+                                });
+                            } else {
+                                const noBusesDiv = document.createElement("div");
+                                noBusesDiv.textContent = `No upcoming connections at ${stationName}.`;
+                                busContainer.appendChild(noBusesDiv);
+                            }
+                        } else {
+                            console.error("Error fetching data:", xhr.statusText);
+                        }
+                    }
+                };
+
+                xhr.open("GET", url, true);
+                xhr.send();
+            }
+
+            function calculateTimeUntilDeparture(departureTime) {
+                const currentUtcTime = new Date();
+                const departureUtcTime = new Date(departureTime);
+                const timeUntilDeparture = Math.floor((departureUtcTime - currentUtcTime) / (60 * 1000));
+
+                return timeUntilDeparture;
+            }
+
+            // Load bus information when the page loads
+            window.onload = getBuses;
+
+            // Update the list every minute
+            setInterval(getBuses, 60000);
+        </script>
     </div>
+    
+    <div id="background"></div>
+    <div id="weather-container">
+        <div id="weather-icon"></div>
+        <div id="temperature"></div>
+    </div>
+    
+    <script src="weather-display.js"></script>
 </body>
 </html>
